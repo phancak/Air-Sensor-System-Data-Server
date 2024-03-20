@@ -13,6 +13,8 @@
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
+            _buttonShowRHPlot.Enabled = true; //Enable the show relative humidity plot button
+
             if (disposing && (components != null))
             {
                 components.Dispose();

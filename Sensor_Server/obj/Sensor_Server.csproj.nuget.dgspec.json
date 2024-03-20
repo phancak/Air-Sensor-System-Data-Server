@@ -40,6 +40,14 @@
         "net8.0-windows7.0": {
           "targetAlias": "net8.0-windows",
           "dependencies": {
+            "Google.Cloud.BigQuery.V2": {
+              "target": "Package",
+              "version": "[3.5.0, )"
+            },
+            "MySql.Data": {
+              "target": "Package",
+              "version": "[8.3.0, )"
+            },
             "ScottPlot.WinForms": {
               "target": "Package",
               "version": "[4.1.70, )"

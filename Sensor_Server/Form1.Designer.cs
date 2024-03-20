@@ -51,6 +51,13 @@
             getCompoToolStripMenuItem = new ToolStripMenuItem();
             getSamplingPeriodToolStripMenuItem = new ToolStripMenuItem();
             getCurrentAlarmToolStripMenuItem = new ToolStripMenuItem();
+            getPointersFromChip1ToolStripMenuItem = new ToolStripMenuItem();
+            getPointersFromChip2ToolStripMenuItem = new ToolStripMenuItem();
+            storeOnEEPROMToolStripMenuItem = new ToolStripMenuItem();
+            plotToolStripMenuItem = new ToolStripMenuItem();
+            resetPlotDataToolStripMenuItem = new ToolStripMenuItem();
+            databaseToolStripMenuItem = new ToolStripMenuItem();
+            setUpConnectionToolStripMenuItem = new ToolStripMenuItem();
             btnSetSamplingPeriod = new Button();
             textBoxSamplingPeriod = new TextBox();
             textBoxSamplingMultiple = new TextBox();
@@ -59,8 +66,7 @@
             btnShowTemperaturePlot = new Button();
             buttonShowRHPlot = new Button();
             btnStopSampling = new Button();
-            plotToolStripMenuItem = new ToolStripMenuItem();
-            resetPlotDataToolStripMenuItem = new ToolStripMenuItem();
+            checkBox_DatabaseLogging = new CheckBox();
             menuStrip1.SuspendLayout();
             SuspendLayout();
             // 
@@ -168,7 +174,7 @@
             // 
             // menuStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, sensorCommandToolStripMenuItem, plotToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, sensorCommandToolStripMenuItem, plotToolStripMenuItem, databaseToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1050, 24);
@@ -190,7 +196,7 @@
             // 
             // sensorCommandToolStripMenuItem
             // 
-            sensorCommandToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { setRTCClockToolStripMenuItem, getRTCClockToolStripMenuItem, pingDeviceToolStripMenuItem, getBlockFromChip1ToolStripMenuItem, getBlockFromChip2ToolStripMenuItem, getCompoToolStripMenuItem, getSamplingPeriodToolStripMenuItem, getCurrentAlarmToolStripMenuItem });
+            sensorCommandToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { setRTCClockToolStripMenuItem, getRTCClockToolStripMenuItem, pingDeviceToolStripMenuItem, getBlockFromChip1ToolStripMenuItem, getBlockFromChip2ToolStripMenuItem, getCompoToolStripMenuItem, getSamplingPeriodToolStripMenuItem, getCurrentAlarmToolStripMenuItem, getPointersFromChip1ToolStripMenuItem, getPointersFromChip2ToolStripMenuItem, storeOnEEPROMToolStripMenuItem });
             sensorCommandToolStripMenuItem.Name = "sensorCommandToolStripMenuItem";
             sensorCommandToolStripMenuItem.Size = new Size(114, 20);
             sensorCommandToolStripMenuItem.Text = "Sensor Command";
@@ -198,50 +204,94 @@
             // setRTCClockToolStripMenuItem
             // 
             setRTCClockToolStripMenuItem.Name = "setRTCClockToolStripMenuItem";
-            setRTCClockToolStripMenuItem.Size = new Size(187, 22);
+            setRTCClockToolStripMenuItem.Size = new Size(201, 22);
             setRTCClockToolStripMenuItem.Text = "Set RTC Clock";
             // 
             // getRTCClockToolStripMenuItem
             // 
             getRTCClockToolStripMenuItem.Name = "getRTCClockToolStripMenuItem";
-            getRTCClockToolStripMenuItem.Size = new Size(187, 22);
+            getRTCClockToolStripMenuItem.Size = new Size(201, 22);
             getRTCClockToolStripMenuItem.Text = "Get RTC Clock";
             // 
             // pingDeviceToolStripMenuItem
             // 
             pingDeviceToolStripMenuItem.Name = "pingDeviceToolStripMenuItem";
-            pingDeviceToolStripMenuItem.Size = new Size(187, 22);
+            pingDeviceToolStripMenuItem.Size = new Size(201, 22);
             pingDeviceToolStripMenuItem.Text = "Ping Device";
             // 
             // getBlockFromChip1ToolStripMenuItem
             // 
             getBlockFromChip1ToolStripMenuItem.Name = "getBlockFromChip1ToolStripMenuItem";
-            getBlockFromChip1ToolStripMenuItem.Size = new Size(187, 22);
+            getBlockFromChip1ToolStripMenuItem.Size = new Size(201, 22);
             getBlockFromChip1ToolStripMenuItem.Text = "Get Block from Chip1";
             // 
             // getBlockFromChip2ToolStripMenuItem
             // 
             getBlockFromChip2ToolStripMenuItem.Name = "getBlockFromChip2ToolStripMenuItem";
-            getBlockFromChip2ToolStripMenuItem.Size = new Size(187, 22);
+            getBlockFromChip2ToolStripMenuItem.Size = new Size(201, 22);
             getBlockFromChip2ToolStripMenuItem.Text = "Get Block from Chip2";
             // 
             // getCompoToolStripMenuItem
             // 
             getCompoToolStripMenuItem.Name = "getCompoToolStripMenuItem";
-            getCompoToolStripMenuItem.Size = new Size(187, 22);
+            getCompoToolStripMenuItem.Size = new Size(201, 22);
             getCompoToolStripMenuItem.Text = "Get Component Info";
             // 
             // getSamplingPeriodToolStripMenuItem
             // 
             getSamplingPeriodToolStripMenuItem.Name = "getSamplingPeriodToolStripMenuItem";
-            getSamplingPeriodToolStripMenuItem.Size = new Size(187, 22);
+            getSamplingPeriodToolStripMenuItem.Size = new Size(201, 22);
             getSamplingPeriodToolStripMenuItem.Text = "Get Sampling Period";
             // 
             // getCurrentAlarmToolStripMenuItem
             // 
             getCurrentAlarmToolStripMenuItem.Name = "getCurrentAlarmToolStripMenuItem";
-            getCurrentAlarmToolStripMenuItem.Size = new Size(187, 22);
+            getCurrentAlarmToolStripMenuItem.Size = new Size(201, 22);
             getCurrentAlarmToolStripMenuItem.Text = "Get Current Alarm";
+            // 
+            // getPointersFromChip1ToolStripMenuItem
+            // 
+            getPointersFromChip1ToolStripMenuItem.Name = "getPointersFromChip1ToolStripMenuItem";
+            getPointersFromChip1ToolStripMenuItem.Size = new Size(201, 22);
+            getPointersFromChip1ToolStripMenuItem.Text = "Get Pointers from Chip1";
+            // 
+            // getPointersFromChip2ToolStripMenuItem
+            // 
+            getPointersFromChip2ToolStripMenuItem.Name = "getPointersFromChip2ToolStripMenuItem";
+            getPointersFromChip2ToolStripMenuItem.Size = new Size(201, 22);
+            getPointersFromChip2ToolStripMenuItem.Text = "Get Pointers from Chip2";
+            // 
+            // storeOnEEPROMToolStripMenuItem
+            // 
+            storeOnEEPROMToolStripMenuItem.Name = "storeOnEEPROMToolStripMenuItem";
+            storeOnEEPROMToolStripMenuItem.Size = new Size(201, 22);
+            storeOnEEPROMToolStripMenuItem.Text = "Store on EEPROM";
+            // 
+            // plotToolStripMenuItem
+            // 
+            plotToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { resetPlotDataToolStripMenuItem });
+            plotToolStripMenuItem.Name = "plotToolStripMenuItem";
+            plotToolStripMenuItem.Size = new Size(40, 20);
+            plotToolStripMenuItem.Text = "Plot";
+            // 
+            // resetPlotDataToolStripMenuItem
+            // 
+            resetPlotDataToolStripMenuItem.Name = "resetPlotDataToolStripMenuItem";
+            resetPlotDataToolStripMenuItem.Size = new Size(153, 22);
+            resetPlotDataToolStripMenuItem.Text = "Reset Plot Data";
+            // 
+            // databaseToolStripMenuItem
+            // 
+            databaseToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { setUpConnectionToolStripMenuItem });
+            databaseToolStripMenuItem.Name = "databaseToolStripMenuItem";
+            databaseToolStripMenuItem.Size = new Size(67, 20);
+            databaseToolStripMenuItem.Text = "Database";
+            // 
+            // setUpConnectionToolStripMenuItem
+            // 
+            setUpConnectionToolStripMenuItem.Name = "setUpConnectionToolStripMenuItem";
+            setUpConnectionToolStripMenuItem.Size = new Size(180, 22);
+            setUpConnectionToolStripMenuItem.Text = "Set Up Connection";
             // 
             // btnSetSamplingPeriod
             // 
@@ -318,24 +368,22 @@
             btnStopSampling.Text = "Stop Sampling";
             btnStopSampling.UseVisualStyleBackColor = false;
             // 
-            // plotToolStripMenuItem
+            // checkBox_DatabaseLogging
             // 
-            plotToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { resetPlotDataToolStripMenuItem });
-            plotToolStripMenuItem.Name = "plotToolStripMenuItem";
-            plotToolStripMenuItem.Size = new Size(40, 20);
-            plotToolStripMenuItem.Text = "Plot";
-            // 
-            // resetPlotDataToolStripMenuItem
-            // 
-            resetPlotDataToolStripMenuItem.Name = "resetPlotDataToolStripMenuItem";
-            resetPlotDataToolStripMenuItem.Size = new Size(180, 22);
-            resetPlotDataToolStripMenuItem.Text = "Reset Plot Data";
+            checkBox_DatabaseLogging.AutoSize = true;
+            checkBox_DatabaseLogging.Location = new Point(865, 263);
+            checkBox_DatabaseLogging.Name = "checkBox_DatabaseLogging";
+            checkBox_DatabaseLogging.Size = new Size(163, 19);
+            checkBox_DatabaseLogging.TabIndex = 22;
+            checkBox_DatabaseLogging.Text = "Transmit Data to Database";
+            checkBox_DatabaseLogging.UseVisualStyleBackColor = true;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1050, 652);
+            Controls.Add(checkBox_DatabaseLogging);
             Controls.Add(btnStopSampling);
             Controls.Add(buttonShowRHPlot);
             Controls.Add(btnShowTemperaturePlot);
@@ -401,5 +449,11 @@
         private Button btnStopSampling;
         private ToolStripMenuItem plotToolStripMenuItem;
         private ToolStripMenuItem resetPlotDataToolStripMenuItem;
+        private ToolStripMenuItem getPointersFromChip1ToolStripMenuItem;
+        private ToolStripMenuItem getPointersFromChip2ToolStripMenuItem;
+        private ToolStripMenuItem storeOnEEPROMToolStripMenuItem;
+        private ToolStripMenuItem databaseToolStripMenuItem;
+        private ToolStripMenuItem setUpConnectionToolStripMenuItem;
+        private CheckBox checkBox_DatabaseLogging;
     }
 }

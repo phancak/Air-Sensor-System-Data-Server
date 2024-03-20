@@ -13,8 +13,15 @@ using System.Threading.Channels;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using Button = System.Windows.Forms.Button;
 using TextBox = System.Windows.Forms.TextBox;
+using Google.Cloud.BigQuery.V2;
+using System.Reflection.Metadata;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Bigquery.v2.Data;
+using static ScottPlot.Generate;
+using DateTime = System.DateTime;
 
-//System.IO.Ports - Sorced from Project/Manage NuGet Packages/Browser/Search for System.IO.Ports
+//System.IO.Ports - Sourced from Project/Manage NuGet Packages/Browser/Search for System.IO.Ports
+//Google.Cloud.BigQuery.V2 - from NuGet package (Project -> Manage NuGet Packages)
 
 namespace Sensor_Server
 {
@@ -35,7 +42,7 @@ namespace Sensor_Server
 
         //Message task queues
         private Channel<MessageStruct> receiveSensorMessageChannel = Channel.CreateUnbounded<MessageStruct>();
-        private Channel<MessageStruct> databaseChannel = Channel.CreateUnbounded<MessageStruct>();
+        private Channel<DatabaseMessageStruct> databaseTransmitChannel = Channel.CreateUnbounded<DatabaseMessageStruct>();
         private Channel<MessageStruct> sensorTransmitChannel = Channel.CreateUnbounded<MessageStruct>();
 
         //Device component constants
@@ -56,8 +63,24 @@ namespace Sensor_Server
         FormTemperaturePlot formTemperaturePlot;
         FormRHDataPlot formRHDataPlot;
 
+        //Database connection
+        string currentDirectory;
+        string jsonKeyFileName;
+        string jsonKeyPath = "c:/project-keys/polished-signer-412800-ec9db9dbce32.json";
+        BigQueryClient client;
+        string projectId = "polished-signer-412800";
+        string datasetId = "Sensor_Data";
+        string temperatureTableId = "Temperature_Table";
+        string relativeHumidityTableId = "Relative_Humidity_Table";
+        TableReference tableReferenceTemperature;
+        TableReference tableReferenceRH;
+
+        //var GOOGLE_APPLICATION_CREDENTIALS = "c:/project-keys/polished-signer-412800-ec9db9dbce32.json";
+
         public Form1()
         {
+            string connectionString = "server=localhost;user=root;password=12345678;database=Sensor_Database;";
+
             //intialize form
             InitializeComponent();
             InitializeUserInterface();
@@ -68,10 +91,77 @@ namespace Sensor_Server
             //Start message consumers
             StartSensorRXMessageConsumer(); //Starts processing of messages received from the device
             StartSensorTXMessageConsumer(); //Starts processing of messages to be transmitted to the device
+            StartDatabaseTXMessageConsumer(); //Starts processing of messages to be transmitted to the database
 
             //Initlialize data plot forms
-            formTemperaturePlot = new FormTemperaturePlot(xValDateTime, yValTemperature);
-            formRHDataPlot = new FormRHDataPlot(xValDateTime, yValRH);
+            //formTemperaturePlot = new FormTemperaturePlot(xValDateTime, yValTemperature);
+            //formRHDataPlot = new FormRHDataPlot(xValDateTime, yValRH);
+
+            //BigQueryConnectionSetup(projectId, datasetId, temperatureTableId, relativeHumidityTableId);
+        }
+
+        public async void BigQueryConnectionSetup(string projectId, string datasetId, string temperatureTableId,
+            string relativeHumidityTableId)
+        {
+            System.Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", "c:/project-keys/polished-signer-412800-ec9db9dbce32.json");
+
+            //Database variables initialization
+            currentDirectory = Environment.CurrentDirectory;
+            //jsonKeyFileName = "polished-signer-412800-ec9db9dbce32.json";
+            //jsonKeyPath = System.IO.Path.Combine(currentDirectory, jsonKeyFileName);
+
+            /*
+            this.jsonKeyPath = jsonKeyPath;
+            this.projectId = projectId;
+            this.datasetId = datasetId;
+            this.temperatureTableId = temperatureTableId;
+            this.relativeHumidityTableId=relativeHumidityTableId;*/
+
+            //client = BigQueryClient.Create(projectId, googleCredential);
+            client = await BigQueryClient.CreateAsync(projectId);
+
+            //Retrieve table references
+            tableReferenceTemperature = client.GetTableReference(datasetId, temperatureTableId);
+            tableReferenceRH = client.GetTableReference(datasetId, relativeHumidityTableId);
+
+            //Retrieve dataset names
+            try
+            {
+                var datasetList = client.ListDatasets(projectId);
+
+                //Output the dataset names
+                SendToConsoleTextBox("Database connection established.");
+                SendToConsoleTextBox("Dataset Names:");
+                foreach (var dataset in datasetList)
+                {
+                    SendToConsoleTextBox(dataset.Reference.DatasetId);
+                }
+
+                //Enable database logging button
+                checkBox_DatabaseLogging.Enabled = true;
+            }
+            catch (Exception ex)
+            {
+                //Disable database logging button
+                checkBox_DatabaseLogging.Enabled = false;
+
+                SendToConsoleTextBox("Database connection error: BigQuery not connected. Exception:" + ex.Message);
+            }
+
+            /*
+            string query = "SELECT * FROM " + projectId + "." + datasetId + "." + temperatureTableId + ";";
+            var results = client.ExecuteQuery(query, parameters: null);
+
+            StringBuilder resultString = new StringBuilder();
+
+            //Process the results
+            foreach (var row in results)
+            {
+                string columnNameValue = row["Temperature_Value"].ToString();
+                resultString.AppendLine(columnNameValue);
+            }
+            string finalResult = resultString.ToString();
+            SendToConsoleTextBox(finalResult);*/
         }
 
         //Initialize User Interface
@@ -93,6 +183,8 @@ namespace Sensor_Server
             comboBox_Data_Bits.Enabled = false;
             comboBox_Stop_Bits.Enabled = false;
             button_Send_to_Device.Enabled = false;
+            checkBox_DatabaseLogging.Enabled = false; 
+            checkBox_DatabaseLogging.Checked = false;
 
             button_Get_COM_Ports.Click += new EventHandler(BtnGetCOMPortsClick);
             button_Open_COM_Port.Click += new EventHandler(BtnOpenCOMPortClick);
@@ -111,6 +203,10 @@ namespace Sensor_Server
             btnShowTemperaturePlot.Click += new EventHandler(ButtonHandler);
             buttonShowRHPlot.Click += new EventHandler(ButtonHandler);
             btnStopSampling.Click += new EventHandler(ButtonHandler);
+            getPointersFromChip1ToolStripMenuItem.Click += new EventHandler(CommandMenuHandler);
+            getPointersFromChip2ToolStripMenuItem.Click += new EventHandler(CommandMenuHandler);
+            storeOnEEPROMToolStripMenuItem.Click += new EventHandler(CommandMenuHandler);
+            setUpConnectionToolStripMenuItem.Click += new EventHandler(CommandMenuHandler);
         }
 
         /// <summary>
@@ -171,6 +267,22 @@ namespace Sensor_Server
                     SendToConsoleTextBox(sender.ToString + " selected " + e.ToString);
                     SensorTXMessageProducer(LabelMessage(messageStruct, 'l', 0));
                     break;
+                case "getPointersFromChip1ToolStripMenuItem":
+                    SendToConsoleTextBox(sender.ToString + " selected " + e.ToString);
+                    SensorTXMessageProducer(LabelMessage(messageStruct, 0x0B, 0));
+                    break;
+                case "getPointersFromChip2ToolStripMenuItem":
+                    SendToConsoleTextBox(sender.ToString + " selected " + e.ToString);
+                    SensorTXMessageProducer(LabelMessage(messageStruct, 0x0D, 0));
+                    break;
+                case "storeOnEEPROMToolStripMenuItem":
+                    EEPROMStoreMessageForm eEPROMStoreMessageForm = new EEPROMStoreMessageForm(messageStruct, this.storeOnEEPROMToolStripMenuItem, this);
+                    eEPROMStoreMessageForm.Show();
+                    break;
+                case "setUpConnectionToolStripMenuItem":
+                    SendToConsoleTextBox(sender.ToString + " selected " + e.ToString);
+                    this.BigQueryConnectionSetup(projectId, datasetId, temperatureTableId, relativeHumidityTableId);
+                    break;
             }
         }
 
@@ -196,12 +308,19 @@ namespace Sensor_Server
                 case "btnShowTemperaturePlot":
                     SendToConsoleTextBox(sender.ToString + " selected " + e.ToString);
                     //FormRHDataPlot formRHDataPlot = new FormRHDataPlot(xValDateTime, yValRH);
-                    formRHDataPlot.Show();
+                    //FormTemperaturePlot formTemperaturePlot = FormTemperaturePlot.Instance(xValDateTime, yValRH);
+                    formTemperaturePlot = new FormTemperaturePlot(xValDateTime, yValTemperature, btnShowTemperaturePlot);
+                    formTemperaturePlot.RefreshTemperaturePlot();
+                    formTemperaturePlot.Show();
                     break;
                 case "buttonShowRHPlot":
                     SendToConsoleTextBox(sender.ToString + " selected " + e.ToString);
                     //FormTemperaturePlot formTemperaturePlot = new FormTemperaturePlot(xValDateTime, yValTemperature);
-                    formTemperaturePlot.Show();
+                    //formTemperaturePlot = new FormTemperaturePlot(xValDateTime, yValTemperature);
+                    //formTemperaturePlot = new FormTemperaturePlot(xValDateTime, yValTemperature);
+                    formRHDataPlot = new FormRHDataPlot(xValDateTime, yValRH, buttonShowRHPlot);
+                    formRHDataPlot.RefreshRHPlot();
+                    formRHDataPlot.Show();
                     break;
                 case "btnStopSampling":
                     SendToConsoleTextBox(sender.ToString + " selected " + e.ToString);
@@ -221,11 +340,11 @@ namespace Sensor_Server
         /// <param name="temperaturePoint">New temperature value</param>
         private void InsertDataPoint(double[] xValue, double[] RHArray, double[] temperatureArray, double dateTime, double RHPoint, double temperaturePoint)
         {
-            for (int i= xValue.Length-1; i > 0; i--)
+            for (int i = xValue.Length - 1; i > 0; i--)
             {
                 //Move array by one data point
-                xValue[i] = xValue[i-1];
-                RHArray[i] = RHArray[i-1];
+                xValue[i] = xValue[i - 1];
+                RHArray[i] = RHArray[i - 1];
                 temperatureArray[i] = temperatureArray[i - 1];
             }
 
@@ -291,17 +410,19 @@ namespace Sensor_Server
         /// <param name="textBox">Source of sampling period</param>
         private int AddMessagePeriod(MessageStruct messageStruct, TextBox textBox)
         {
-            int samplingPeriod = 0; 
+            int samplingPeriod = 0;
 
             //Convert supplied sampling period to int
             try
             {
                 samplingPeriod = int.Parse(textBox.Text);
-            } catch (FormatException e)
+            }
+            catch (FormatException e)
             {
                 SendToConsoleTextBox("Invalid sampling period format.");
                 return 0;
-            } catch (OverflowException e)
+            }
+            catch (OverflowException e)
             {
                 SendToConsoleTextBox("Overflow occured during sampling period conversion.");
                 return 0;
@@ -309,7 +430,7 @@ namespace Sensor_Server
 
             for (int i = 0; i < 4; i++)
             {
-                messageStruct.message[i + 1] = ((samplingPeriod) >> (i*8)) & 0x000000FF;
+                messageStruct.message[i + 1] = ((samplingPeriod) >> (i * 8)) & 0x000000FF;
             }
 
             return 1;
@@ -322,7 +443,7 @@ namespace Sensor_Server
             string msgStrg = string.Empty;
 
             //Message number components
-            for(int i=0; i < msg_size;i++)
+            for (int i = 0; i < msg_size; i++)
             {
                 msgStrg += ($"{messageStruct.message[i]:X2}-");
             }
@@ -330,12 +451,39 @@ namespace Sensor_Server
             return msgStrg;
         }
 
+        //Producer for meesages to be transmitted to the database
+        public async void DatabaseTXMessageProducer(DatabaseMessageStruct databaseMessageStruct)
+        {
+            await databaseTransmitChannel.Writer.WriteAsync(databaseMessageStruct);
+        }
+
+        //Processes messages to be tranmitted to the database (from databaseTransmitChannel)
+        private async void StartDatabaseTXMessageConsumer()
+        {
+            //Task runs asynchronously
+            await Task.Run(async () =>
+            {
+                try
+                {
+                    await foreach (var item in databaseTransmitChannel.Reader.ReadAllAsync())
+                    {
+                        transmitDataToDatabase(item); //Transmist data to database
+                    }
+                }
+                catch (ChannelClosedException ex)
+                {
+                    SendToConsoleTextBox("ChannelClosedException: " + ex.Message);
+                    SendToConsoleTextBox("Consumer Complete.");
+                }
+            });
+        }
+
         //Producer for meesages to be transmitted to the sensor device
-        private async void SensorTXMessageProducer(MessageStruct messageStruct)
+        public async void SensorTXMessageProducer(MessageStruct messageStruct)
         {
             await sensorTransmitChannel.Writer.WriteAsync(messageStruct);
 
-            SendToTextBoxServerMessages("Added message to sensor transmit channel: " + GetMessageString(messageStruct, msg_size)); //Displays the received message
+            //SendToTextBoxServerMessages("Added message to sensor transmit channel: " + GetMessageString(messageStruct, msg_size)); //Displays the received message
         }
 
         //Processes messages to be tranmitted to the sensor device (from sensorTransmitChannel)
@@ -348,7 +496,7 @@ namespace Sensor_Server
                 {
                     await foreach (var item in sensorTransmitChannel.Reader.ReadAllAsync())
                     {
-                        SendToTextBoxServerMessages("Consumed device TX message: " + GetMessageString(item, msg_size)); //Displays the received message
+                        //SendToTextBoxServerMessages("Consumed device TX message: " + GetMessageString(item, msg_size)); //Displays the received message
                         BaseStreamController(0, item, msg_size); //Transmist message through serial port to the devic
                     }
                 }
@@ -370,7 +518,7 @@ namespace Sensor_Server
                 {
                     await foreach (var item in receiveSensorMessageChannel.Reader.ReadAllAsync())
                     {
-                        SendToTextBoxServerMessages("Consumed sensor RX message: " + GetMessageString(item, msg_size)); //Displays the received message
+                        //SendToTextBoxServerMessages("Consumed sensor RX message: " + GetMessageString(item, msg_size)); //Displays the received message
                         ProcessMessage(item);
                     }
                 }
@@ -534,7 +682,8 @@ namespace Sensor_Server
 
                     byteCount++;
                 }
-            } else if(direction == 1)
+            }
+            else if (direction == 1)
             {
                 //MessageStruct messegaStructReceived = new MessageStruct(msg_size); //Message prototype to be transmitted to device
                 int byteCount = 0;
@@ -558,12 +707,12 @@ namespace Sensor_Server
 
             semaphore.Release();
 
-            SendToTextBoxServerMessages(((direction == 0) ? "Transmitted message" : "Received message") + GetMessageString(messageStruct, msg_size)); //Displays the received message
+            //SendToTextBoxServerMessages(((direction == 0) ? "Transmitted message" : "Received message") + GetMessageString(messageStruct, msg_size)); //Displays the received message
 
 
         }
 
-        //Handler for when new data omn serial port are detected
+        //Handler for when new data on serial port are detected
         private async void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             MessageStruct messageStruct = new MessageStruct(msg_size); //Container for message
@@ -617,9 +766,37 @@ namespace Sensor_Server
                         //Device notified that sampling has stopped
                         SendToTextBoxServerMessages("Device notified that sampling has stopped.");
                         break;
+                    case 0x0C:
+                        //Device sent EEPROM data pointers
+                        SendToTextBoxServerMessages("Device sent EEPROM info, " + GetEEPROMPointerString(messageStruct));
+                        break;
+                    case 0x0E:
+                        //Device EEPROM data pointers
+                        SendToTextBoxServerMessages("Device sent EEPROM info, " + GetEEPROMPointerString(messageStruct));
+                        break;
+                    case 0x11:
+                        //Device sent EEPROM chip 1 write message reception confirmation 
+                        SendToTextBoxServerMessages("Device sent EEPROM chip 1 write message reception confirmation.");
+                        break;
+                    case 0x12:
+                        //Device sent EEPROM chip 2 write message reception confirmation 
+                        SendToTextBoxServerMessages("Device sent EEPROM chip 2 write message reception confirmation.");
+                        break;
+                    case 0x13:
+                        //Device sent FIFO message block from EEPROM chip 1
+                        SendToTextBoxServerMessages("Device sent FIFO message block from EEPROM chip 1, Data: " + GetMessageString(messageStruct, msg_size));
+                        break;
+                    case 0x14:
+                        //Device sent FIFO message block from EEPROM chip 2
+                        SendToTextBoxServerMessages("Device sent FIFO message block from EEPROM chip 2, Data: " + GetMessageString(messageStruct, msg_size));
+                        break;
+                    case 0x15:
+                        //Device notified that unknown message has been encountered
+                        SendToTextBoxServerMessages("Device notified that unknown message has been encountered");
+                        break;
                     case 'f':
-                        //Device sent MCU serail number
-                        SendToTextBoxServerMessages("Device sent MCU serail number: " + GetMessageString(messageStruct, msg_size));
+                        //Device sent MCU unique device ID
+                        SendToTextBoxServerMessages("Device sent MCU device ID number, Wafer Number: " + GetMCUWaferNumber(messageStruct) + ", Lot Number: " + GetMCULotNumber(messageStruct) + ", Unique ID bits: " + GetMCUUniqueIDbits(messageStruct) + "\n");
                         break;
                     case 'i':
                         //Device sent the current sampling period (seconds)
@@ -646,10 +823,74 @@ namespace Sensor_Server
             }
         }
 
+        /// <summary>
+        /// Retrieves data write and process pointers from a message
+        /// </summary>
+        /// <param name="messageStruct">Sensor messsage</param>
+        /// <returns>String with EEPROM chip write and process pointer information</returns>
+        private string GetEEPROMPointerString(MessageStruct messageStruct)
+        {
+            int dataWritePointerNumber = messageStruct.message[1] | messageStruct.message[2] << 8;
+            int dataProcessPointerNumber = messageStruct.message[3] | messageStruct.message[4] << 8;
+            int EEPROMChipAddressNumber = messageStruct.message[5];
+
+            string EEPROMDataPointerString = "EEPROM Chip Address: 0x" + EEPROMChipAddressNumber.ToString("X") +
+                " Data Write Pointer: 0x" + dataWritePointerNumber.ToString("X") +
+                " Data Process Pointer: 0x" + dataProcessPointerNumber.ToString("X");
+
+            return EEPROMDataPointerString;
+        }
+
+        /// <summary>
+        /// Extracts MCU wafer number from device messag
+        /// </summary>
+        /// <param name="messageStruct">Device message container</param>
+        /// <returns>MCU wafer number</returns>
+        private string GetMCUWaferNumber(MessageStruct messageStruct)
+        {
+            int waferNumber = messageStruct.message[4];
+
+            string waferNumberString = "0x" + waferNumber.ToString("X");
+
+            return waferNumberString;
+        }
+
+        /// <summary>
+        /// Extracts MCU lot number from device message
+        /// </summary>
+        /// <param name="messageStruct">Device message container</param>
+        /// <returns>MCU lot number</returns>
+        private string GetMCULotNumber(MessageStruct messageStruct)
+        {
+            //Generates lot number string
+            long lotNumber = messageStruct.message[1] | (messageStruct.message[2] << 8) | (messageStruct.message[3] << 16) | (messageStruct.message[5] << 24) | (messageStruct.message[6] << 32 | (messageStruct.message[7] << 38) | (messageStruct.message[8] << 24));
+
+            SendToConsoleTextBox("lotNumber: " + lotNumber);
+
+            string lotNumberString = "0x" + lotNumber.ToString("X");
+
+            return lotNumberString;
+        }
+
+        /// <summary>
+        /// Extracts MCU unique ID bits from device message
+        /// </summary>
+        /// <param name="messageStruct">Device message container</param>
+        /// <returns>Unique MCU ID bits</returns>
+        private string GetMCUUniqueIDbits(MessageStruct messageStruct)
+        {
+            //Generates lot number string
+            int idNumber = messageStruct.message[9] | (messageStruct.message[10] << 8) | (messageStruct.message[11] << 16) | (messageStruct.message[12] << 24);
+
+            string idNumberString = "0x" + idNumber.ToString("X");
+
+            return idNumberString;
+        }
+
         private void process_sensor_message(MessageStruct messageStruct)
         {
             //Generate DateTime variable
-            DateTime dateTime = ConvertBCDToDateTime(messageStruct);
+            System.DateTime dateTime = ConvertBCDToDateTime(messageStruct);
             double dateTimeOADate;
 
             //Extract sensor data
@@ -679,9 +920,13 @@ namespace Sensor_Server
                 InsertDataPoint(xValDateTime, yValRH, yValTemperature, dateTimeOADate, RH_value, temperature_value);
 
                 //Refresh plot forms after new data collected
-                formRHDataPlot.RefreshRHPlot();
-                formTemperaturePlot.RefreshTemperaturePlot();
-            } catch (OverflowException e)
+                if (formRHDataPlot != null && formTemperaturePlot != null)
+                {
+                    formRHDataPlot.RefreshRHPlot();
+                    formTemperaturePlot.RefreshTemperaturePlot();
+                }
+            }
+            catch (OverflowException e)
             {
                 SendToConsoleTextBox("Date time failed, " + e.Message);
             }
@@ -689,10 +934,56 @@ namespace Sensor_Server
             //Display data
             SendToTextBoxServerMessages("Received data at: " + dateTime.ToLongDateString() + "' " + dateTime.ToLongTimeString() +
                 ", humidity: " + RH_value + ", temperature: " + temperature_value);
+
+            //Database transmission (Data are first added to message queue
+            if (checkBox_DatabaseLogging.Checked )
+            {
+                DatabaseMessageStruct databaseMessageStruct = new DatabaseMessageStruct(dateTime, temperature_value, RH_value);
+
+                DatabaseTXMessageProducer(databaseMessageStruct);
+            }
+        }
+
+        private async void transmitDataToDatabase(DatabaseMessageStruct databaseMessageStruct)
+        {
+            //Extract data from messageStruct
+            System.DateTime dateTime = databaseMessageStruct.dateTime;
+            double temperature_value = databaseMessageStruct.temperature_value;
+            double RH_value = databaseMessageStruct.RH_value;
+
+            //Converts dateTime for Google BigQuery database
+            String dateTimeBQ = FormatDateTimeForBigQuery(dateTime);
+
+            //Define temperature row to be inserted into temperature table
+            var rowTemperature = new BigQueryInsertRow
+            {
+                {"Time", dateTimeBQ},
+                {"Temperature_Value", temperature_value}
+            };
+
+            var rowRH = new BigQueryInsertRow
+            {
+                {"Time", dateTimeBQ},
+                {"Relative_Humidity_Value", RH_value}
+            };
+
+            //Insert the row into table
+            try
+            {
+                await client.InsertRowAsync(this.tableReferenceTemperature, rowTemperature);
+                await client.InsertRowAsync(this.tableReferenceRH, rowRH);
+                SendToTextBoxServerMessages("Data from time: " + dateTimeBQ + " were inserted into the database");
+            } catch (Exception e)
+            {
+                SendToTextBoxServerMessages("Error during database insertion from time: " + dateTimeBQ + ", Exception: " + e.Message);
+            }
+
         }
 
         private void BtnGetCOMPortsClick(object sender, EventArgs e)
         {
+            listBox_COM_Ports.Items.Clear(); //Clear the previous data
+
             SendToConsoleTextBox(sender.ToString() + ", " + e.ToString());
 
             //Get list of available COM ports
@@ -739,7 +1030,7 @@ namespace Sensor_Server
             }
             else
             {
-                textBox_Console.AppendText("> " + s + Environment.NewLine);
+                this.textBox_Console.AppendText("> " + s + Environment.NewLine);
             }
         }
 
@@ -854,6 +1145,15 @@ namespace Sensor_Server
             dateTime = new DateTime(year, month, day, hour, minute, second);
 
             return dateTime;
+        }
+
+        string FormatDateTimeForBigQuery(DateTime dateTime)
+        {
+            //Formats dateTime
+            //string formattedDateTime = dateTime.ToString("yyyy-MM-dd HH:mm:ss.ffffff UTC");
+            string formattedDateTime = dateTime.ToString("yyyy-MM-dd HH:mm:ss");
+
+            return formattedDateTime;
         }
 
         private void button_Get_Device_Clock_Click(object sender, EventArgs e)
