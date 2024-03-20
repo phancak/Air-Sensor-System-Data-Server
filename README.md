@@ -1,5 +1,5 @@
 # Air-Sensor-System-Data-Server
-A data server that receives and processes temperature and humidity data transmitted by the accompanying air sensing device  
+A data server that receives and processes temperature and humidity data transmitted by the accompanying air sensing device. The data are then transmitted to a cloud database where they can be accessed by server and displayed in real-time on a website.
 
 ## Functional Diagram
 ![Functional_Diagram2](https://github.com/phancak/Air-Sensor-System-Data-Server/assets/84169376/f72b174f-f547-48c3-afc0-0678ff61980b)
