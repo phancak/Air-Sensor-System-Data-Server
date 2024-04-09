@@ -7,6 +7,9 @@ A data server that receives and processes temperature and humidity data transmit
 ## System Architecture Diagram
 ![System_Architecture2](https://github.com/phancak/Air-Sensor-System-Data-Server/assets/84169376/a14956a7-4727-4ce6-a9dd-0a50c098a5a1)
 
+## Sensor Device Schematics
+![Device_Schematics]("https://github.com/phancak/Air-Sensor-System-Data-Server/assets/84169376/a79a3b8c-9230-4659-b2cc-8fba7ea0722a")
+
 ## Server User Interface
 ![Screen1](https://github.com/phancak/Air-Sensor-System-Data-Server/assets/84169376/b1b63f8e-b4a8-4dd0-8c1a-2b3b418422df)
 
